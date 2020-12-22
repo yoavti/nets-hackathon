@@ -1,0 +1,9 @@
+if __name__ == "__main__":
+    while True:
+        # Looking for server
+        # After receiving offer...
+        # Connecting to server
+        # After connecting to server...
+        # Game mode
+        # After finishing game...
+        pass
