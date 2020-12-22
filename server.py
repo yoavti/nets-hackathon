@@ -2,6 +2,8 @@ from socket import socket, AF_INET, SOCK_DGRAM, SOCK_STREAM
 from offer_message import pack_offer
 from time import sleep
 from collections import namedtuple
+from random import choice
+from multiprocessing import Process
 
 
 HOST = '172.1.0.77'
@@ -10,9 +12,14 @@ OFFER_PORT = 13117
 BASE_GAME_PORT = 12000
 BACKLOG = 1
 BUFFER_SIZE = 2048
+TEAMS = [1, 2]
 
 
-Player = namedtuple('Player', 'socket address name score')
+Player = namedtuple('Player', 'socket address name team score')
+
+
+def manage_player(player, start_message):
+    player.socket.send(start_message)
 
 
 if __name__ == "__main__":
@@ -30,15 +37,23 @@ if __name__ == "__main__":
                     join_socket.bind(('', next_available_port))
                     join_socket.listen(BACKLOG)
                     client_socket, client_address = join_socket.accept()
-                with client_socket:
-                    team_name = client_socket.recv(BUFFER_SIZE)
-                    team_name = team_name.decode('utf-8').rstrip()
-                    players.append(Player._make((
-                        client_socket,
-                        client_address,
-                        team_name,
-                        0)))
+                team_name = client_socket.recv(BUFFER_SIZE)
+                print(team_name)
+                team_name = team_name.decode('utf-8').rstrip()
+                players.append(Player._make((
+                    client_socket,
+                    client_address,
+                    team_name,
+                    choice(TEAMS),
+                    0)))
                 sleep(1)
         # Game mode
-        # manage game
+        processes = [
+            Process(target=manage_player, args=(player, 'blah'))
+            for player in players]
+        for p in processes:
+            p.start()
+        sleep(10)
+        for p in processes:
+            p.join()
         # After 10 seconds...

@@ -14,6 +14,7 @@ if __name__ == "__main__":
         with socket(AF_INET, SOCK_DGRAM) as offer_socket:
             offer_socket.bind(('', OFFER_PORT))
             message, server_address = offer_socket.recvfrom(BUFFER_SIZE)
+            print(message)
         server_port = unpack_offer(message)
         if not server_port:
             break
