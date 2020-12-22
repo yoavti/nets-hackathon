@@ -29,7 +29,8 @@ if __name__ == "__main__":
             print(start_message)
             while True:
                 key = read_key()
-                game_socket.send(key)
+                print(key)
+                send_string(game_socket, key)
                 try:
                     end_message = recv_string(game_socket)
                     print(end_message)
