@@ -21,6 +21,10 @@ Player = namedtuple('Player', 'socket address name team score')
 
 
 def manage_player(player):
+    """
+    Method given to a process for the given player.
+    Is charged with receiving messages notifying of keys pressed by the client
+    and increasing their score."""
     while True:
         player.socket.recv(BUFFER_SIZE)
         player.score = player.score + 1
@@ -53,6 +57,7 @@ if __name__ == "__main__":
         # Game mode
 
         def player_names_of_team(team):
+            'Returns the names of all players in the team joined by \\n.'
             return '\n'.join([
                 player.name
                 for player in players
