@@ -5,7 +5,6 @@ from time import sleep
 from collections import namedtuple
 from random import choice
 from multiprocessing import Process
-from functools import reduce
 
 
 HOST = '172.1.0.77'
@@ -76,11 +75,10 @@ if __name__ == "__main__":
         for p in processes:
             p.join()
         scores = [
-            reduce(
-                lambda acc, curr:
-                    acc + (curr.score if curr.team == team else 0),
-                players,
-                0)
+            sum([
+                player.score
+                for player in players
+                if player.team == team])
             for team in TEAMS]
         winner = 1 + scores.index(max(scores))
         scores_string = ' '.join([
