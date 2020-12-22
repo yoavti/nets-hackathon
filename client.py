@@ -9,20 +9,20 @@ TEAM_NAME = b'Silverhand\n'
 
 if __name__ == "__main__":
     print('Client started, listening for offer requests...')
-    with socket(AF_INET, SOCK_DGRAM) as offer_socket:
-        offer_socket.bind(('', OFFER_PORT))
-        while True:
-            # Looking for server
+    while True:
+        # Looking for server
+        with socket(AF_INET, SOCK_DGRAM) as offer_socket:
+            offer_socket.bind(('', OFFER_PORT))
             message, server_address = offer_socket.recvfrom(BUFFER_SIZE)
-            server_port = unpack_offer(message)
-            if not server_port:
-                pass
-            # Connecting to a server
-            print(
-                f'Received offer from {server_address}, attempting to connect...')
-            with socket(AF_INET, SOCK_STREAM) as game_socket:
-                game_socket.connect((server_address, server_port))
-                game_socket.send(TEAM_NAME)
-            # Game mode
-            # play game
-            # After finishing game...
+        server_port = unpack_offer(message)
+        if not server_port:
+            break
+        # Connecting to a server
+        print(
+            f'Received offer from {server_address}, attempting to connect...')
+        with socket(AF_INET, SOCK_STREAM) as game_socket:
+            game_socket.connect((server_address, server_port))
+            game_socket.send(TEAM_NAME)
+        # Game mode
+        # play game
+        # After finishing game...
