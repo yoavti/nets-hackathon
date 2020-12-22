@@ -37,16 +37,21 @@ if __name__ == "__main__":
         # Waiting for clients
         with socket(AF_INET, SOCK_DGRAM) as offer_socket:
             for i in range(10):
+                # Sending offer to all clients in the network
                 offer_socket.sendto(
                     pack_offer(JOIN_PORT),
                     (NETWORK, OFFER_PORT))
+                # Waiting for clients to reciprocate
                 with socket(AF_INET, SOCK_STREAM) as join_socket:
                     join_socket.bind(('', JOIN_PORT))
                     join_socket.listen(BACKLOG)
                     client_socket, client_address = join_socket.accept()
+                # Waiting for accepted client to sent their team name
                 team_name = recv_string(client_socket).rstrip()
+                # Setting some auxilliary parameters
                 team = choice(TEAMS)
                 score = 0
+                # Adding a new Player tuple to our list of registered players
                 players.append(Player._make((
                     client_socket,
                     client_address,
@@ -63,6 +68,7 @@ if __name__ == "__main__":
                 for player in players
                 if player.team == team])
 
+        # Sending start message to all registered clients
         members_string = '\n'.join([
             f"""
             Group {team}:
@@ -76,14 +82,18 @@ if __name__ == "__main__":
         print(start_message)
         for player in players:
             send_string(player.socket, start_message)
+        # Starting game by starting processes which will deal with each clients key-mashing
         processes = [
             Process(target=manage_player, args=(player))
             for player in players]
         for p in processes:
             p.start()
+        # Waiting for game to end in 10 seconds
         sleep(10)
+        # Ending the game
         for p in processes:
             p.join()
+        # Post-game analysis
         scores = [
             sum([
                 player.score
@@ -91,6 +101,7 @@ if __name__ == "__main__":
                 if player.team == team])
             for team in TEAMS]
         winner = 1 + scores.index(max(scores))
+        # Sending end message to all registered clients
         scores_string = ' '.join([
             f'Group {index + 1} typed in {score} characters.'
             for index, score in enumerate(scores)])
