@@ -8,7 +8,6 @@ if __name__ == "__main__":
             # Send offers
             sleep(1)
         # Game mode
-        for i in range(10):
-            # manage game
-            sleep(1)
+        # manage game
+        # After 10 seconds...
         pass
