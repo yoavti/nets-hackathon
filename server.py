@@ -4,6 +4,7 @@ from time import sleep
 from collections import namedtuple
 from random import choice
 from multiprocessing import Process
+from functools import reduce
 
 
 HOST = '172.1.0.77'
@@ -20,8 +21,9 @@ Player = namedtuple('Player', 'socket address name team score')
 
 def manage_player(player, start_message):
     player.socket.send(start_message)
-    player.socket.recv(BUFFER_SIZE)
-    player.score = player.score + 1
+    while True:
+        player.socket.recv(BUFFER_SIZE)
+        player.score = player.score + 1
 
 
 if __name__ == "__main__":
@@ -50,18 +52,19 @@ if __name__ == "__main__":
                 sleep(1)
         # Game mode
         newline = '\n'
+        team_members = '\n'.join([
+            f"""
+            Group {team}:
+            ==
+            {newline.join([
+                player.name
+                for player in players
+                if player.team == team])}"""
+            for team in TEAMS])
         start_message = f"""
         Welcome to Keyboard Spamming Battle Royale.
-        Group 1:
-        ==
-        {newline.join([player.name for player in players if player.team == 1])}
-
-        Group 2:
-        ==
-        {newline.join([player.name for player in players if player.team == 2])}
-
-        Start pressing keys on your keyboard as fast as you can!!
-        """
+        {team_members}
+        Start pressing keys on your keyboard as fast as you can!!""".encode('utf-8')
         processes = [
             Process(target=manage_player, args=(player, start_message))
             for player in players]
@@ -70,5 +73,26 @@ if __name__ == "__main__":
         sleep(10)
         for p in processes:
             p.join()
+        scores = [
+            reduce(
+                lambda acc, curr:
+                    acc + (curr.score if curr.team == team else 0),
+                players,
+                0)
+            for team in TEAMS]
+        winner = 1 + scores.index(max(scores))
+        scores_string = ' '.join([
+            f'Group {index + 1} type in {score}.'
+            for index, score in enumerate(scores)])
+        print(f"""
+        Game over!
+        {scores_string}
+        Congratulations to the winners:
+        ==
+        {newline.join([
+            player.name
+            for player in players
+            if player.team == winner])}""")
         for player in players:
             player.socket.close()
+        print('​ Game over, sending out offer requests...')
