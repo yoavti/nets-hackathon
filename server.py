@@ -5,10 +5,11 @@ from time import sleep
 from collections import namedtuple
 from random import choice
 from multiprocessing import Process
+from scapy.all import get_if_addr
 
 
-HOST = '172.1.0.77'
-NETWORK = '172.1.0/24'
+NETWORK = 'eth1'
+HOST = get_if_addr(NETWORK)
 OFFER_PORT = 13117
 JOIN_PORT = 12000
 BACKLOG = 1

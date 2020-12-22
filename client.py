@@ -4,7 +4,7 @@ from offer_message import unpack_offer
 from keyboard import read_key
 
 
-TEAM_NAME = 'Silverhand'
+TEAM_NAME = input('Your team name: ')
 OFFER_PORT = 13117
 
 
