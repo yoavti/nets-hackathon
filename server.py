@@ -1,4 +1,5 @@
 from socket import socket, AF_INET, SOCK_DGRAM, SOCK_STREAM
+from string_message import BUFFER_SIZE, send_string, recv_string
 from offer_message import pack_offer
 from time import sleep
 from collections import namedtuple
@@ -12,7 +13,6 @@ NETWORK = '172.1.0/24'
 OFFER_PORT = 13117
 JOIN_PORT = 12000
 BACKLOG = 1
-BUFFER_SIZE = 2048
 TEAMS = [1, 2]
 
 
@@ -20,7 +20,7 @@ Player = namedtuple('Player', 'socket address name team score')
 
 
 def manage_player(player, start_message):
-    player.socket.send(start_message)
+    send_string(player.socket, start_message)
     while True:
         player.socket.recv(BUFFER_SIZE)
         player.score = player.score + 1
@@ -40,14 +40,15 @@ if __name__ == "__main__":
                     join_socket.bind(('', JOIN_PORT))
                     join_socket.listen(BACKLOG)
                     client_socket, client_address = join_socket.accept()
-                team_name = client_socket.recv(BUFFER_SIZE)
-                team_name = team_name.decode('utf-8').rstrip()
+                team_name = recv_string(client_socket).rstrip()
+                team = choice(TEAMS)
+                score = 0
                 players.append(Player._make((
                     client_socket,
                     client_address,
                     team_name,
-                    choice(TEAMS),
-                    0)))
+                    team,
+                    score)))
                 sleep(1)
         # Game mode
         newline = '\n'
@@ -63,7 +64,7 @@ if __name__ == "__main__":
         start_message = f"""
         Welcome to Keyboard Spamming Battle Royale.
         {team_members}
-        Start pressing keys on your keyboard as fast as you can!!""".encode('utf-8')
+        Start pressing keys on your keyboard as fast as you can!!"""
         processes = [
             Process(target=manage_player, args=(player, start_message))
             for player in players]

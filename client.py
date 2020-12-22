@@ -1,11 +1,11 @@
 from socket import socket, AF_INET, SOCK_DGRAM, SOCK_STREAM
+from string_message import BUFFER_SIZE, send_string, recv_string
 from offer_message import unpack_offer
 from keyboard import read_key
 
 
+TEAM_NAME = 'Silverhand'
 OFFER_PORT = 13117
-BUFFER_SIZE = 2048
-TEAM_NAME = b'Silverhand\n'
 
 
 if __name__ == "__main__":
@@ -23,10 +23,10 @@ if __name__ == "__main__":
             f'Received offer from {server_address}, attempting to connect...')
         with socket(AF_INET, SOCK_STREAM) as game_socket:
             game_socket.connect((server_address, server_port))
-            game_socket.send(TEAM_NAME)
+            send_string(game_socket, TEAM_NAME + '\n')
             # Game mode
-            start_message = game_socket.recv(BUFFER_SIZE)
-            print(start_message.decode('utf-8'))
+            start_message = recv_string(game_socket)
+            print(start_message)
             while True:
                 try:
                     key = read_key()
