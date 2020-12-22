@@ -20,6 +20,8 @@ Player = namedtuple('Player', 'socket address name team score')
 
 def manage_player(player, start_message):
     player.socket.send(start_message)
+    player.socket.recv(BUFFER_SIZE)
+    player.score = player.score + 1
 
 
 if __name__ == "__main__":
@@ -38,7 +40,6 @@ if __name__ == "__main__":
                     join_socket.listen(BACKLOG)
                     client_socket, client_address = join_socket.accept()
                 team_name = client_socket.recv(BUFFER_SIZE)
-                print(team_name)
                 team_name = team_name.decode('utf-8').rstrip()
                 players.append(Player._make((
                     client_socket,
@@ -58,7 +59,7 @@ if __name__ == "__main__":
         Group 2:
         ==
         {newline.join([player.name for player in players if player.team == 2])}
-        
+
         Start pressing keys on your keyboard as fast as you can!!
         """
         processes = [
