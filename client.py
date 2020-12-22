@@ -1,9 +1,19 @@
+from offer_message import unpack_offer
+from socket import socket, AF_INET, SOCK_DGRAM
+
+
+OFFER_PORT = 13117
+BUFFER_SIZE = 2048
+
+
 if __name__ == "__main__":
-    while True:
-        # Looking for server
-        # After receiving offer...
-        # Connecting to server
-        # After connecting to server...
-        # Game mode
-        # After finishing game...
-        pass
+    with socket(AF_INET, SOCK_DGRAM) as offer_socket:
+        offer_socket.bind(('', OFFER_PORT))
+        while True:
+            # Looking for server and connecting to it
+            message, server_address = offer_socket.recvfrom(BUFFER_SIZE)
+            server_port = unpack_offer(message)
+            if not server_port:
+                pass
+            # Game mode
+            # After finishing game...

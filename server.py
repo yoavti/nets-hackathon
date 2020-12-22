@@ -7,7 +7,6 @@ HOST = '172.1.0.77'
 NETWORK = '172.1.0/24'
 OFFER_PORT = 13117
 GAME_PORT = 12000
-BUFFER_SIZE = 2048
 
 
 if __name__ == "__main__":
