@@ -1,9 +1,14 @@
+from time import sleep
+
+
 if __name__ == "__main__":
     while True:
         # Waiting for clients
-        # Send offers
-        # After 10 seconds...
+        for i in range(10):
+            # Send offers
+            sleep(1)
         # Game mode
-        # manage game
-        # After 10 seconds...
+        for i in range(10):
+            # manage game
+            sleep(1)
         pass
