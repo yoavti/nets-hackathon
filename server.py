@@ -1,6 +1,7 @@
-from time import sleep
 from socket import socket, AF_INET, SOCK_DGRAM, SOCK_STREAM
 from offer_message import pack_offer
+from time import sleep
+from collections import namedtuple
 
 
 HOST = '172.1.0.77'
@@ -11,12 +12,16 @@ BACKLOG = 1
 BUFFER_SIZE = 2048
 
 
+Player = namedtuple('Player', 'socket address name')
+
+
 if __name__ == "__main__":
     print(f'Server started, listening on IP address {HOST}')
     with socket(AF_INET, SOCK_STREAM) as game_socket:
         game_socket.bind(('', GAME_PORT))
         game_socket.listen(BACKLOG)
         while True:
+            players = {}
             # Waiting for clients
             with socket(AF_INET, SOCK_DGRAM) as offer_socket:
                 for i in range(10):
@@ -27,6 +32,10 @@ if __name__ == "__main__":
                     with client_socket:
                         team_name = client_socket.recv(BUFFER_SIZE)
                         team_name = team_name.decode('utf-8').rstrip()
+                        players[team_name] = Player._make((
+                            client_socket,
+                            client_address,
+                            team_name))
                     sleep(1)
             # Game mode
             # manage game
