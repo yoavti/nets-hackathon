@@ -1,5 +1,5 @@
 from offer_message import unpack_offer
-from socket import socket, AF_INET, SOCK_DGRAM
+from socket import socket, AF_INET, SOCK_DGRAM, SOCK_STREAM
 
 
 OFFER_PORT = 13117
@@ -15,5 +15,7 @@ if __name__ == "__main__":
             server_port = unpack_offer(message)
             if not server_port:
                 pass
+            with socket(AF_INET, SOCK_STREAM) as game_socket:
+                game_socket.connect((server_address, server_port))
             # Game mode
             # After finishing game...
