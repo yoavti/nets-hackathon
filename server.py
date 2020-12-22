@@ -10,7 +10,7 @@ from functools import reduce
 HOST = '172.1.0.77'
 NETWORK = '172.1.0/24'
 OFFER_PORT = 13117
-BASE_GAME_PORT = 12000
+JOIN_PORT = 12000
 BACKLOG = 1
 BUFFER_SIZE = 2048
 TEAMS = [1, 2]
@@ -33,12 +33,11 @@ if __name__ == "__main__":
         # Waiting for clients
         with socket(AF_INET, SOCK_DGRAM) as offer_socket:
             for i in range(10):
-                next_available_port = BASE_GAME_PORT + len(players)
                 offer_socket.sendto(
-                    pack_offer(next_available_port),
+                    pack_offer(JOIN_PORT),
                     (NETWORK, OFFER_PORT))
                 with socket(AF_INET, SOCK_STREAM) as join_socket:
-                    join_socket.bind(('', next_available_port))
+                    join_socket.bind(('', JOIN_PORT))
                     join_socket.listen(BACKLOG)
                     client_socket, client_address = join_socket.accept()
                 team_name = client_socket.recv(BUFFER_SIZE)
