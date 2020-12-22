@@ -48,12 +48,26 @@ if __name__ == "__main__":
                     0)))
                 sleep(1)
         # Game mode
+        newline = '\n'
+        start_message = f"""
+        Welcome to Keyboard Spamming Battle Royale.
+        Group 1:
+        ==
+        {newline.join([player.name for player in players if player.team == 1])}
+
+        Group 2:
+        ==
+        {newline.join([player.name for player in players if player.team == 2])}
+        
+        Start pressing keys on your keyboard as fast as you can!!
+        """
         processes = [
-            Process(target=manage_player, args=(player, 'blah'))
+            Process(target=manage_player, args=(player, start_message))
             for player in players]
         for p in processes:
             p.start()
         sleep(10)
         for p in processes:
             p.join()
-        # After 10 seconds...
+        for player in players:
+            player.socket.close()
