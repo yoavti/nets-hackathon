@@ -28,8 +28,11 @@ if __name__ == "__main__":
             start_message = recv_string(game_socket)
             print(start_message)
             while True:
+                key = read_key()
+                game_socket.send(key)
                 try:
-                    key = read_key()
-                    game_socket.send(key)
-                except:
+                    end_message = recv_string(game_socket)
+                    print(end_message)
                     break
+                except:
+                    pass

@@ -19,8 +19,7 @@ TEAMS = [1, 2]
 Player = namedtuple('Player', 'socket address name team score')
 
 
-def manage_player(player, start_message):
-    send_string(player.socket, start_message)
+def manage_player(player):
     while True:
         player.socket.recv(BUFFER_SIZE)
         player.score = player.score + 1
@@ -65,6 +64,9 @@ if __name__ == "__main__":
         Welcome to Keyboard Spamming Battle Royale.
         {team_members}
         Start pressing keys on your keyboard as fast as you can!!"""
+        print(start_message)
+        for player in players:
+            send_string(player.socket, start_message)
         processes = [
             Process(target=manage_player, args=(player, start_message))
             for player in players]
@@ -84,7 +86,7 @@ if __name__ == "__main__":
         scores_string = ' '.join([
             f'Group {index + 1} type in {score}.'
             for index, score in enumerate(scores)])
-        print(f"""
+        end_message = f"""
         Game over!
         {scores_string}
         Congratulations to the winners:
@@ -92,7 +94,9 @@ if __name__ == "__main__":
         {newline.join([
             player.name
             for player in players
-            if player.team == winner])}""")
+            if player.team == winner])}"""
+        print(end_message)
         for player in players:
+            send_string(player.socket, end_message)
             player.socket.close()
         print('​ Game over, sending out offer requests...')
