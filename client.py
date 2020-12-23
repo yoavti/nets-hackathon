@@ -1,7 +1,7 @@
 from socket import socket, AF_INET, SOCK_DGRAM, SOCK_STREAM
 from string_message import BUFFER_SIZE, send_string, recv_string
 from offer_message import unpack_offer
-from keyboard import read_key
+from pynput.keyboard import Controller, Listener, Key
 
 
 TEAM_NAME = input('Your team name: ')
@@ -16,25 +16,28 @@ if __name__ == "__main__":
             offer_socket.bind(('', OFFER_PORT))
             message, server_address = offer_socket.recvfrom(BUFFER_SIZE)
         server_port = unpack_offer(message)
+        server_ip, _ = server_address
         if not server_port:
             break
         # Connecting to a server
         print(
-            f'Received offer from {server_address}, attempting to connect...')
+            f'Received offer from {server_ip}, attempting to connect...')
         with socket(AF_INET, SOCK_STREAM) as game_socket:
-            game_socket.connect((server_address, server_port))
+            game_socket.connect((server_ip, server_port))
             send_string(game_socket, TEAM_NAME + '\n')
             # Game mode
             start_message = recv_string(game_socket)
             print(start_message)
-            game_socket.settimeout(0)
-            while True:
-                key = read_key()
-                print(key)
-                send_string(game_socket, key)
-                try:
-                    end_message = recv_string(game_socket)
-                    print(end_message)
-                    break
-                except:
-                    pass
+
+            def on_press(key):
+                'Handles keypress events by the user.'
+                if key == Key.esc:
+                    return False
+                char = key.char
+                print(char)
+                send_string(game_socket, char)
+            with Listener(on_press=on_press) as listener:
+                listener.start()
+                end_message = recv_string(game_socket)
+                print(end_message)
+                Controller().press(Key.esc)  # Stop listener
