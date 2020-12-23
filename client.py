@@ -27,6 +27,7 @@ if __name__ == "__main__":
             # Game mode
             start_message = recv_string(game_socket)
             print(start_message)
+            game_socket.settimeout(0)
             while True:
                 key = read_key()
                 print(key)
