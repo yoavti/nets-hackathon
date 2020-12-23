@@ -11,7 +11,6 @@ from scapy.all import get_if_addr
 NETWORK = '127.0.0.1'
 HOST = '127.0.0.1'  # get_if_addr(NETWORK)
 OFFER_PORT = 13117
-JOIN_PORT = 12000
 BACKLOG = 1
 NUM_OF_TEAMS = 2
 TEAMS = [x + 1 for x in range(NUM_OF_TEAMS - 1)]
@@ -30,12 +29,12 @@ def manage_player(player):
         player.score = player.score + 1
 
 
-def send_offer(offer_socket):
+def send_offer(offer_socket, port):
     'Method given to a process charged with sending offer messages through the given socket every second'
     while True:
         # Sending offer to all clients in the network
         offer_socket.sendto(
-            pack_offer(JOIN_PORT),
+            pack_offer(port),
             (NETWORK, OFFER_PORT))
         sleep(1)
 
@@ -46,13 +45,15 @@ if __name__ == "__main__":
         players = []
         start_time = time()
         # Waiting for clients
-        with socket(AF_INET, SOCK_DGRAM) as offer_socket:
-            offer_sender = Process(target=send_offer, args=(offer_socket,))
-            offer_sender.start()
-            # Waiting for clients to respond
-            with socket(AF_INET, SOCK_STREAM) as join_socket:
-                join_socket.bind(('', JOIN_PORT))
-                join_socket.listen(BACKLOG)
+        with socket(AF_INET, SOCK_STREAM) as join_socket:
+            join_socket.bind(('', 0))
+            join_socket.listen(BACKLOG)
+            with socket(AF_INET, SOCK_DGRAM) as offer_socket:
+                offer_sender = Process(
+                    target=send_offer,
+                    args=(offer_socket, join_socket.getsockname()[1]))
+                offer_sender.start()
+                # Waiting for clients to respond
                 time_left = 10
                 while time_left > 0:
                     join_socket.settimeout(time_left)
