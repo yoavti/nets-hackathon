@@ -8,8 +8,8 @@ from multiprocessing import Process
 from scapy.all import get_if_addr
 
 
-NETWORK = 'eth1'
-HOST = get_if_addr(NETWORK)
+NETWORK = '127.0.0.1'
+HOST = '127.0.0.1'  # get_if_addr(NETWORK)
 OFFER_PORT = 13117
 JOIN_PORT = 12000
 BACKLOG = 1
@@ -47,32 +47,32 @@ if __name__ == "__main__":
         start_time = time()
         # Waiting for clients
         with socket(AF_INET, SOCK_DGRAM) as offer_socket:
-            offer_sender = Process(target=send_offer, args=(offer_socket))
+            offer_sender = Process(target=send_offer, args=(offer_socket,))
             offer_sender.start()
-            time_left = 10
-            while time_left > 0:
-                # Waiting for clients to reciprocate
-                with socket(AF_INET, SOCK_STREAM) as join_socket:
-                    join_socket.bind(('', JOIN_PORT))
-                    join_socket.listen(BACKLOG)
+            # Waiting for clients to respond
+            with socket(AF_INET, SOCK_STREAM) as join_socket:
+                join_socket.bind(('', JOIN_PORT))
+                join_socket.listen(BACKLOG)
+                time_left = 10
+                while time_left > 0:
                     join_socket.settimeout(time_left)
                     try:
                         client_socket, client_address = join_socket.accept()
+                        # Waiting for accepted client to sent their team name
+                        team_name = recv_string(client_socket).rstrip()
+                        # Setting some auxilliary parameters
+                        team = choice(TEAMS)
+                        score = 0
+                        # Adding a new Player tuple to our list of registered players
+                        players.append(Player._make((
+                            client_socket,
+                            client_address,
+                            team_name,
+                            team,
+                            score)))
+                        time_left = time() - start_time - 10
                     except:
-                        pass
-                # Waiting for accepted client to sent their team name
-                team_name = recv_string(client_socket).rstrip()
-                # Setting some auxilliary parameters
-                team = choice(TEAMS)
-                score = 0
-                # Adding a new Player tuple to our list of registered players
-                players.append(Player._make((
-                    client_socket,
-                    client_address,
-                    team_name,
-                    team,
-                    score)))
-                time_left = time() - start_time - 10
+                        break
             offer_sender.terminate()
 
         def player_names_of_team(team):
@@ -98,7 +98,7 @@ if __name__ == "__main__":
             send_string(player.socket, start_message)
         # Starting game by starting processes which will deal with each clients key-mashing
         processes = [
-            Process(target=manage_player, args=(player))
+            Process(target=manage_player, args=(player,))
             for player in players]
         for p in processes:
             p.start()
