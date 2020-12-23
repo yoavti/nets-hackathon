@@ -1,7 +1,7 @@
 from struct import pack, unpack
 
 
-FORMAT = 'Ibh'
+FORMAT = 'IBH'
 COOKIE = 0xfeedbeef
 TYPE = 0x2
 
