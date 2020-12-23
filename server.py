@@ -1,7 +1,7 @@
 from socket import socket, AF_INET, SOCK_DGRAM, SOCK_STREAM
 from string_message import BUFFER_SIZE, send_string, recv_string
 from offer_message import pack_offer
-from time import sleep
+from time import sleep, time
 from collections import namedtuple
 from random import choice
 from multiprocessing import Process
@@ -30,22 +30,36 @@ def manage_player(player):
         player.score = player.score + 1
 
 
+def send_offer(offer_socket):
+    'Method given to a process charged with sending offer messages through the given socket every second'
+    while True:
+        # Sending offer to all clients in the network
+        offer_socket.sendto(
+            pack_offer(JOIN_PORT),
+            (NETWORK, OFFER_PORT))
+        sleep(1)
+
+
 if __name__ == "__main__":
     print(f'Server started, listening on IP address {HOST}')
     while True:
         players = []
+        start_time = time()
         # Waiting for clients
         with socket(AF_INET, SOCK_DGRAM) as offer_socket:
-            for i in range(10):
-                # Sending offer to all clients in the network
-                offer_socket.sendto(
-                    pack_offer(JOIN_PORT),
-                    (NETWORK, OFFER_PORT))
+            offer_sender = Process(target=send_offer, args=(offer_socket))
+            offer_sender.start()
+            time_left = 10
+            while time_left > 0:
                 # Waiting for clients to reciprocate
                 with socket(AF_INET, SOCK_STREAM) as join_socket:
                     join_socket.bind(('', JOIN_PORT))
                     join_socket.listen(BACKLOG)
-                    client_socket, client_address = join_socket.accept()
+                    join_socket.settimeout(time_left)
+                    try:
+                        client_socket, client_address = join_socket.accept()
+                    except:
+                        pass
                 # Waiting for accepted client to sent their team name
                 team_name = recv_string(client_socket).rstrip()
                 # Setting some auxilliary parameters
@@ -58,8 +72,8 @@ if __name__ == "__main__":
                     team_name,
                     team,
                     score)))
-                sleep(1)
-        # Game mode
+                time_left = time() - start_time - 10
+            offer_sender.terminate()
 
         def player_names_of_team(team):
             'Returns the names of all players in the team joined by \\n.'
@@ -67,7 +81,7 @@ if __name__ == "__main__":
                 player.name
                 for player in players
                 if player.team == team])
-
+        # Game mode
         # Sending start message to all registered clients
         members_string = '\n'.join([
             f"""
@@ -92,7 +106,7 @@ if __name__ == "__main__":
         sleep(10)
         # Ending the game
         for p in processes:
-            p.join()
+            p.terminate()
         # Post-game analysis
         scores = [
             sum([
