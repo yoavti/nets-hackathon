@@ -2,7 +2,6 @@ from socket import socket, AF_INET, SOCK_DGRAM, SOCK_STREAM
 from string_message import BUFFER_SIZE, send_string, recv_string
 from offer_message import pack_offer
 from time import sleep, time
-from collections import namedtuple
 from random import choice
 from multiprocessing import Process
 from scapy.all import get_if_addr
@@ -16,7 +15,13 @@ NUM_OF_TEAMS = 2
 TEAMS = [x + 1 for x in range(NUM_OF_TEAMS - 1)]
 
 
-Player = namedtuple('Player', 'socket address name team score')
+class Player:
+    def __init__(self, socket, address, name, team, score):
+        self.socket = socket
+        self.address = address
+        self.name = name
+        self.team = team
+        self.score = score
 
 
 def manage_player(player):
@@ -64,13 +69,13 @@ if __name__ == "__main__":
                         # Setting some auxilliary parameters
                         team = choice(TEAMS)
                         score = 0
-                        # Adding a new Player tuple to our list of registered players
-                        players.append(Player._make((
+                        # Adding a new Player object to our list of registered players
+                        players.append(Player(
                             client_socket,
                             client_address,
                             team_name,
                             team,
-                            score)))
+                            score))
                         time_left = time() - start_time - 10
                     except:
                         break
