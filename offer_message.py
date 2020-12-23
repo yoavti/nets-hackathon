@@ -1,9 +1,9 @@
 from struct import pack, unpack
 
 
-FORMAT = 'ich'
+FORMAT = 'Ibh'
 COOKIE = 0xfeedbeef
-TYPE = 2
+TYPE = 0x2
 
 
 def pack_offer(server_port):
