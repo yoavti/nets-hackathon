@@ -37,7 +37,7 @@ if __name__ == "__main__":
                 print(char)
                 send_string(game_socket, char)
             with Listener(on_press=on_press) as listener:
-                listener.start()
                 end_message = recv_string(game_socket)
                 print(end_message)
                 Controller().press(Key.esc)  # Stop listener
+                listener.join()
