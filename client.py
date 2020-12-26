@@ -2,7 +2,7 @@ from socket import socket, AF_INET, SOCK_DGRAM, SOCK_STREAM, SOL_SOCKET, SO_REUS
 from string_message import BUFFER_SIZE, send_string, recv_string
 from offer_message import unpack_offer
 from multiprocessing import Process
-from ANSI import bcolors, annotate_variable, print_error
+from ANSI import annotate_variable, print_error
 import getch
 
 

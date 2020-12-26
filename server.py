@@ -6,12 +6,12 @@ from random import choice
 from multiprocessing import Process, Queue
 from scapy.all import get_if_addr
 from recordtype import recordtype
-from ANSI import bcolors, annotate_variable, annotate_name, annotate_underline, print_error, print_warning
+from ANSI import annotate_variable, annotate_name, annotate_underline, print_error, print_warning
 from time import time
 
 
-NETWORK = '255.255.255.255'
-HOST = '127.0.0.1'  # get_if_addr('eth1')
+NETWORK = '255.255.255.255'  # TODO: change to something specific to the dev network
+HOST = get_if_addr('eth1')
 OFFER_PORT = 13117
 BACKLOG = 1
 DURATION = 10
