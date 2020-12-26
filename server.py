@@ -3,35 +3,33 @@ from string_message import BUFFER_SIZE, send_string, recv_string
 from offer_message import pack_offer
 from time import sleep, time
 from random import choice
-from multiprocessing import Process
+from multiprocessing import Process, Queue
 from scapy.all import get_if_addr
+from recordtype import recordtype
 
 
 NETWORK = '127.0.0.1'
 HOST = '127.0.0.1'  # get_if_addr(NETWORK)
 OFFER_PORT = 13117
 BACKLOG = 1
+DURATION = 10
+DELAY_BETWEEN_OFFERS = 1
 NUM_OF_TEAMS = 2
-TEAMS = [x + 1 for x in range(NUM_OF_TEAMS - 1)]
+TEAMS = [x + 1 for x in range(NUM_OF_TEAMS)]
 
 
-class Player:
-    def __init__(self, socket, address, name, team, score):
-        self.socket = socket
-        self.address = address
-        self.name = name
-        self.team = team
-        self.score = score
+Player = recordtype('Player', 'socket address name team score')
 
 
-def manage_player(player):
+def manage_player(player, q):
     """
     Method given to a process for the given player.
     Is charged with receiving messages notifying of keys pressed by the client
-    and increasing their score."""
+    and increasing their score.
+    """
     while True:
-        player.socket.recv(BUFFER_SIZE)
-        player.score = player.score + 1
+        msg = player.socket.recv(BUFFER_SIZE)
+        q.put((player.name, msg))
 
 
 def send_offer(offer_socket, port):
@@ -41,27 +39,26 @@ def send_offer(offer_socket, port):
         offer_socket.sendto(
             pack_offer(port),
             (NETWORK, OFFER_PORT))
-        sleep(1)
+        sleep(DELAY_BETWEEN_OFFERS)
 
 
 if __name__ == "__main__":
     print(f'Server started, listening on IP address {HOST}')
     while True:
         players = []
-        start_time = time()
         # Waiting for clients
         with socket(AF_INET, SOCK_STREAM) as join_socket:
             join_socket.bind(('', 0))
             join_socket.listen(BACKLOG)
+            join_socket.settimeout(DURATION)
             with socket(AF_INET, SOCK_DGRAM) as offer_socket:
+                join_port = join_socket.getsockname()[1]
                 offer_sender = Process(
                     target=send_offer,
-                    args=(offer_socket, join_socket.getsockname()[1]))
+                    args=(offer_socket, join_port,))
                 offer_sender.start()
                 # Waiting for clients to respond
-                time_left = 10
-                while time_left > 0:
-                    join_socket.settimeout(time_left)
+                while True:
                     try:
                         client_socket, client_address = join_socket.accept()
                         # Waiting for accepted client to sent their team name
@@ -76,7 +73,6 @@ if __name__ == "__main__":
                             team_name,
                             team,
                             score))
-                        time_left = time() - start_time - 10
                     except:
                         break
             offer_sender.terminate()
@@ -93,27 +89,36 @@ if __name__ == "__main__":
             f"""
             Group {team}:
             ==
-            {player_names_of_team(team)}"""
+            {player_names_of_team(team)}
+            """
             for team in TEAMS])
         start_message = f"""
         Welcome to Keyboard Spamming Battle Royale.
         {members_string}
-        Start pressing keys on your keyboard as fast as you can!!"""
+        Start pressing keys on your keyboard as fast as you can!
+        """
         print(start_message)
         for player in players:
             send_string(player.socket, start_message)
         # Starting game by starting processes which will deal with each clients key-mashing
+        q = Queue()
         processes = [
-            Process(target=manage_player, args=(player,))
+            Process(target=manage_player, args=(player, q,))
             for player in players]
         for p in processes:
             p.start()
         # Waiting for game to end in 10 seconds
-        sleep(10)
+        sleep(DURATION)
         # Ending the game
         for p in processes:
             p.terminate()
         # Post-game analysis
+        score_per_player = {player.name: 0 for player in players}
+        while not q.empty():
+            name, key = q.get()
+            for player in players:
+                if player.name == name:
+                    player.score += 1
         scores = [
             sum([
                 player.score
@@ -128,11 +133,15 @@ if __name__ == "__main__":
         end_message = f"""
         Game over!
         {scores_string}
+        Group {winner} wins!
         Congratulations to the winners:
         ==
-        {player_names_of_team(winner)}"""
+        {player_names_of_team(winner)}
+        """
         print(end_message)
         for player in players:
             send_string(player.socket, end_message)
+        # Closing the TCP connections
+        for player in players:
             player.socket.close()
-        print('​ Game over, sending out offer requests...')
+        print('​Game over, sending out offer requests...')

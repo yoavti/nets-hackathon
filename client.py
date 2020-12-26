@@ -1,11 +1,30 @@
 from socket import socket, AF_INET, SOCK_DGRAM, SOCK_STREAM
 from string_message import BUFFER_SIZE, send_string, recv_string
 from offer_message import unpack_offer
-from pynput.keyboard import Controller, Listener, Key
+from multiprocessing import Process
+import getch
 
 
-TEAM_NAME = input('Your team name: ')
+TEAM_NAME = 'Silverhand'
 OFFER_PORT = 13117
+
+
+def send_keys(sock):
+    while True:
+        try:
+            key = getch.getch()
+            send_string(sock, key)
+        except:
+            break
+
+
+def receive_messages(sock):
+    while True:
+        try:
+            server_message = recv_string(sock)
+            print(server_message)
+        except:
+            break
 
 
 if __name__ == "__main__":
@@ -25,19 +44,18 @@ if __name__ == "__main__":
         with socket(AF_INET, SOCK_STREAM) as game_socket:
             game_socket.connect((server_ip, server_port))
             send_string(game_socket, TEAM_NAME + '\n')
+            print("Connected and waiting for game to start")
             # Game mode
             start_message = recv_string(game_socket)
             print(start_message)
-
-            def on_press(key):
-                'Handles keypress events by the user.'
-                if key == Key.esc:
-                    return False
-                char = key.char
-                print(char)
-                send_string(game_socket, char)
-            with Listener(on_press=on_press) as listener:
-                end_message = recv_string(game_socket)
-                print(end_message)
-                Controller().press(Key.esc)  # Stop listener
-                listener.join()
+            key_sender = Process(target=send_keys, args=(game_socket,))
+            key_sender.start()
+            while True:
+                try:
+                    server_message = recv_string(game_socket)
+                    print(server_message)
+                    break
+                except:
+                    key_sender.terminate()
+                    break
+            print('Server disconnected, listening for offer requests...')
