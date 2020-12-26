@@ -21,5 +21,8 @@ def unpack_offer(offer):
     which was unpacked according to the offer format,
     doing so only after checking that the cookie and type are correct.
     """
-    magic_cookie, message_type, server_port = unpack(FORMAT, offer)
-    return None if magic_cookie != COOKIE or message_type != TYPE else server_port
+    try:
+        magic_cookie, message_type, server_port = unpack(FORMAT, offer)
+        return None if magic_cookie != COOKIE or message_type != TYPE else server_port
+    except:
+        return None
