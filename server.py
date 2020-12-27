@@ -10,7 +10,7 @@ from ANSI import annotate_variable, annotate_name, annotate_underline, print_err
 from time import time
 
 
-NETWORK = '255.255.255.255'  # TODO: change to something specific to the dev network
+NETWORK = '172.1.255.255'
 HOST = get_if_addr('eth1')
 OFFER_PORT = 13117
 BACKLOG = 1
