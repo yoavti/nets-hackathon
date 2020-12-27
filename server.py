@@ -44,7 +44,7 @@ def manage_player(player, q):
             break
 
 
-def send_offer(offer_socket, port):
+def send_offers(offer_socket, port):
     'Method given to a process charged with sending offer messages through the given socket every second'
     while True:
         # Sending offer to all clients in the network
@@ -56,6 +56,23 @@ def send_offer(offer_socket, port):
             print_warning('Failed to send offer messages')
             pass
         sleep(DELAY_BETWEEN_OFFERS)
+
+
+def player_names_of_team(players, team):
+    'Returns the names of all players in the team joined by \\n.'
+    return '\n'.join([
+        annotate_name(player.name)
+        for player in players
+        if player.team == team])
+
+
+def try_sending_message(sock, message):
+    'Sends the given string message through the given socket and returns whether the message was sent properly'
+    try:
+        send_string(sock, message)
+        return True
+    except:
+        return False
 
 
 if __name__ == "__main__":
@@ -74,7 +91,7 @@ if __name__ == "__main__":
                 offer_socket.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
                 join_port = join_socket.getsockname()[1]
                 offer_sender = Process(
-                    target=send_offer,
+                    target=send_offers,
                     args=(offer_socket, join_port,))
                 offer_sender.start()
                 # Waiting for clients to respond
@@ -96,19 +113,12 @@ if __name__ == "__main__":
                     except:
                         break
             offer_sender.terminate()
-
-        def player_names_of_team(team):
-            'Returns the names of all players in the team joined by \\n.'
-            return '\n'.join([
-                annotate_name(player.name)
-                for player in players
-                if player.team == team])
         # Game mode
         # Sending start message to all registered clients
         members_string = '\n'.join([
             '\n'.join([
                 f'Group {annotate_variable(team)}:',
-                f'{player_names_of_team(team)}'
+                f'{player_names_of_team(players, team)}'
             ])
             for team in TEAMS])
         start_message = '\n'.join([
@@ -117,17 +127,10 @@ if __name__ == "__main__":
             'Start pressing keys on your keyboard as fast as you can!'
         ])
         print(start_message)
-
-        def try_sending_start_message(player, start_message):
-            try:
-                send_string(player.socket, start_message)
-                return True
-            except:
-                return False
         players = [
             player
             for player in players
-            if try_sending_start_message(player, start_message)]
+            if try_sending_message(player.socket, start_message)]
         # Starting game by starting processes which will deal with each clients key-mashing
         q = Queue()
         processes = [
@@ -177,7 +180,7 @@ if __name__ == "__main__":
             f'{scores_string}',
             f'Group {annotate_variable(winner)} wins!',
             'Congratulations to the winners:',
-            f'{player_names_of_team(winner)}',
+            f'{player_names_of_team(players, winner)}',
             'Leaderboard for this round:',
             f'{leaderboard_string}',
             f'The most commonly typed character was {annotate_name(common_key)}'
