@@ -113,6 +113,8 @@ if __name__ == "__main__":
                     except:
                         break
             offer_sender.terminate()
+        if not players:
+            continue
         # Game mode
         # Sending start message to all registered clients
         members_string = '\n'.join([
@@ -161,8 +163,7 @@ if __name__ == "__main__":
         leaderboard = [
             f'{annotate_name(player.name)}\t{annotate_variable(player.score)}'
             for player in ordered_players]
-        if (len(leaderboard) > 0):
-            leaderboard[0] = annotate_underline(leaderboard[0])
+        leaderboard[0] = annotate_underline(leaderboard[0])
         leaderboard_string = '\n'.join(leaderboard)
         common_key = max(key_histogram, key=key_histogram.get)
         scores = [
