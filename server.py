@@ -165,7 +165,10 @@ if __name__ == "__main__":
             for player in ordered_players]
         leaderboard[0] = annotate_underline(leaderboard[0])
         leaderboard_string = '\n'.join(leaderboard)
-        common_key = max(key_histogram, key=key_histogram.get)
+        if key_histogram:
+            common_key = max(key_histogram, key=key_histogram.get)
+        else:
+            common_key = 'no keys entered'
         scores = [
             sum([
                 player.score
