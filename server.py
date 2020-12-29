@@ -161,7 +161,8 @@ if __name__ == "__main__":
         leaderboard = [
             f'{annotate_name(player.name)}\t{annotate_variable(player.score)}'
             for player in ordered_players]
-        leaderboard[0] = annotate_underline(leaderboard[0])
+        if (len(leaderboard > 0)):
+            leaderboard[0] = annotate_underline(leaderboard[0])
         leaderboard_string = '\n'.join(leaderboard)
         common_key = max(key_histogram, key=key_histogram.get)
         scores = [
