@@ -188,7 +188,7 @@ if __name__ == "__main__":
             f'{player_names_of_team(players, winner)}',
             'Leaderboard for this round:',
             f'{leaderboard_string}',
-            f'The most commonly typed character was {annotate_name(common_key)}'
+            f"The most commonly typed character was '{annotate_name(common_key)}'"
         ])
         print(end_message)
         for player in players:
