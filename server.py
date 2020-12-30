@@ -82,10 +82,12 @@ if __name__ == "__main__":
         players = []
         # Waiting for clients
         print('Sending out offer requests')
+        # Setting up TCP socket used for receiving keystrokes
         with socket(AF_INET, SOCK_STREAM) as join_socket:
             join_socket.bind(('', 0))
             join_socket.listen(BACKLOG)
             join_socket.settimeout(DURATION)
+            # Setting up UDP socket used for sending out offer messages
             with socket(AF_INET, SOCK_DGRAM) as offer_socket:
                 offer_socket.setsockopt(SOL_SOCKET, SO_REUSEPORT, 1)
                 offer_socket.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
@@ -146,6 +148,7 @@ if __name__ == "__main__":
         for p in processes:
             p.terminate()
         # Post-game analysis
+        # Going over queue given to the keystroke-detecting processes which contains the pairs of player name and the key they typed in
         key_histogram = {}
         while not q.empty():
             name, key = q.get()
@@ -156,6 +159,7 @@ if __name__ == "__main__":
             for player in players:
                 if player.name == name:
                     player.score += 1
+        # Creating leaderboard - ordered list of players by score
         ordered_players = sorted(
             players,
             key=lambda player: player.score,
@@ -165,17 +169,19 @@ if __name__ == "__main__":
             for player in ordered_players]
         leaderboard[0] = annotate_underline(leaderboard[0])
         leaderboard_string = '\n'.join(leaderboard)
+        # Finding the most typed key
         if key_histogram:
             common_key = max(key_histogram, key=key_histogram.get)
         else:
             common_key = 'no keys entered'
+        # Calculating scores for each team
         scores = [
             sum([
                 player.score
                 for player in players
                 if player.team == team])
             for team in TEAMS]
-        winner = 1 + scores.index(max(scores))
+        winner = 1 + scores.index(max(scores))  # Winning team
         # Sending end message to all registered clients
         scores_string = ' '.join([
             f'Group {annotate_variable(index + 1)} typed in {annotate_variable(score)} characters.'

@@ -25,19 +25,21 @@ if __name__ == "__main__":
     while True:
         # Looking for server
         print('Listening for offer requests')
+        # Setting up UDP socket used for receiving offer messages
         with socket(AF_INET, SOCK_DGRAM) as offer_socket:
             offer_socket.setsockopt(SOL_SOCKET, SO_REUSEPORT, 1)
             offer_socket.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
             offer_socket.bind(('', OFFER_PORT))
+            # Waiting for offers
             message, server_address = offer_socket.recvfrom(BUFFER_SIZE)
         server_port = unpack_offer(message)
         server_ip, _ = server_address
         if not server_port:
             print_error('Incorrect offer message format received')
             continue
-        # Connecting to a server
         print(
             f'Received offer from {annotate_variable(server_ip)}, attempting to connect...')
+        # Setting up TCP socket used for sending keystrokes
         with socket(AF_INET, SOCK_STREAM) as game_socket:
             # Connecting to server
             try:
@@ -64,6 +66,7 @@ if __name__ == "__main__":
                 continue
             key_sender = Process(target=send_keys, args=(game_socket,))
             key_sender.start()
+            # Trying to receive string messages from server
             while True:
                 try:
                     server_message = recv_string(game_socket)
