@@ -37,17 +37,22 @@ def receive_server_messages(sock):
         pass
 
 
+def receive_server_address():
+    'Receives an offer message from the server and returns its address'
+    offer_socket = create_offer_socket()
+    with offer_socket:
+        offer_socket.bind(('', OFFER_PORT))
+        message, server_address = offer_socket.recvfrom(BUFFER_SIZE)
+    server_port = unpack_offer(message)
+    server_ip, _ = server_address
+    return server_ip, server_port
+
+
 def client_round():
     # Looking for server
     print('Listening for offer requests')
     # Setting up UDP socket used for receiving offer messages
-    offer_socket = create_offer_socket()
-    with offer_socket:
-        offer_socket.bind(('', OFFER_PORT))
-        # Waiting for offers
-        message, server_address = offer_socket.recvfrom(BUFFER_SIZE)
-    server_port = unpack_offer(message)
-    server_ip, _ = server_address
+    server_ip, server_port = receive_server_address()
     if not server_port:
         print_error('Incorrect offer message format received')
         return
