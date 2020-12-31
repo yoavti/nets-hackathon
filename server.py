@@ -9,13 +9,24 @@ from scapy.all import get_if_addr
 from recordtype import recordtype
 
 
+NETWORK_SETTING = 'ssh'
 NUM_OF_TEAMS = 2
 TEAMS = [x + 1 for x in range(NUM_OF_TEAMS)]
 DURATION = 10
-NETWORK = '172.1.255.255'
 DELAY_BETWEEN_OFFERS = 1
 BACKLOG = 1
-HOST = get_if_addr('eth1')
+if NETWORK_SETTING == 'home':
+    NETWORK = '255.255.255.255'
+    HOST = '127.0.0.1'
+elif NETWORK_SETTING == 'ssh':
+    NETWORK = '172.1.255.255'
+    HOST = get_if_addr('eth1')
+elif NETWORK_SETTING == 'exam':
+    NETWORK = '172.99.255.255'
+    HOST = get_if_addr('eth2')
+else:
+    NETWORK = '255.255.255.255'
+    HOST = '127.0.0.1'
 
 Player = recordtype('Player', 'socket address name team score')
 
