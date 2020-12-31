@@ -9,6 +9,18 @@ import getch
 TEAM_NAME = 'Silverhand'
 
 
+def try_receiving_server_message(sock):
+    'Tries receiving a message from the server and returns whether it succeeded'
+    try:
+        server_message = recv_string(sock)
+        if not server_message:
+            return False
+        print(server_message)
+        return True
+    except:
+        return False
+
+
 def receive_server_messages(sock):
     'Receives messages from the server and prints them'
     while try_receiving_server_message(sock):
@@ -31,18 +43,6 @@ def play_game(sock):
     key_sender.start()
     receive_server_messages(sock)
     key_sender.terminate()
-
-
-def try_receiving_server_message(sock):
-    'Tries receiving a message from the server and returns whether it succeeded'
-    try:
-        server_message = recv_string(sock)
-        if not server_message:
-            return False
-        print(server_message)
-        return True
-    except:
-        return False
 
 
 def connect_to_server(sock, server_ip, server_port):

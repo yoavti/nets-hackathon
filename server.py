@@ -201,8 +201,7 @@ def send_start_message(players):
     members_string = '\n'.join([
         '\n'.join([
             f'Group {annotate_variable(team)}:',
-            f'{player_names_of_team(players, team)}'
-        ])
+            f'{player_names_of_team(players, team)}'])
         for team in TEAMS])
     start_message = '\n'.join([
         'Welcome to Keyboard Spamming Battle Royale.',
