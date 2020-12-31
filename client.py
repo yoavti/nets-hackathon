@@ -19,6 +19,24 @@ def send_keys(sock):
             break
 
 
+def try_receiving_server_message(sock):
+    'Tries receiving a message from the server and returns whether it succeeded'
+    try:
+        server_message = recv_string(sock)
+        if not server_message:
+            return False
+        print(server_message)
+        return True
+    except:
+        return False
+
+
+def receive_server_messages(sock):
+    'Receives messages from the server and prints them'
+    while try_receiving_server_message(sock):
+        pass
+
+
 def client_round():
     # Looking for server
     print('Listening for offer requests')
@@ -51,26 +69,13 @@ def client_round():
             return
         print("Connected and waiting for game to start")
         # Game mode
-        try:
-            start_message = recv_string(game_socket)
-            if not start_message:
-                print_error('Could not receive start message for the game')
-                return
-            print(start_message)
-        except:
+        if not try_receiving_server_message(game_socket):
             print_error('Could not receive start message for the game')
             return
         key_sender = Process(target=send_keys, args=(game_socket,))
         key_sender.start()
         # Trying to receive string messages from server
-        while True:
-            try:
-                server_message = recv_string(game_socket)
-                if not server_message:
-                    break
-                print(server_message)
-            except:
-                break
+        receive_server_messages(game_socket)
         key_sender.terminate()
         print('Server disconnected')
 

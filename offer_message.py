@@ -9,6 +9,7 @@ TYPE = 0x2
 
 
 def create_offer_socket():
+    'Initializes the socket through which both the client will read offer messages and the server will send offer messages'
     offer_socket = socket(AF_INET, SOCK_DGRAM)
     offer_socket.setsockopt(SOL_SOCKET, SO_REUSEPORT, 1)
     offer_socket.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
