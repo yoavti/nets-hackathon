@@ -70,8 +70,33 @@ def try_sending_message(sock, message):
         return False
 
 
-def server_round():
+def receive_players(join_socket):
+    'Receives player connection and adds details about them to a list'
     players = []
+    start_time = time()
+    while time() - start_time < DURATION:
+        try:
+            # Accepting the player's connection
+            client_socket, client_address = join_socket.accept()
+            # Receiving the team name
+            team_name = recv_string(client_socket).rstrip()
+            # Selecting a team assignment at random
+            team = choice(TEAMS)
+            # Setting the score to 0
+            score = 0
+            # Adding a new Player object to our list of registered players
+            players.append(Player(
+                client_socket,
+                client_address,
+                team_name,
+                team,
+                score))
+        except:
+            break
+    return players
+
+
+def server_round():
     # Waiting for clients
     print('Sending out offer requests')
     # Setting up TCP socket used for receiving keystrokes
@@ -88,23 +113,7 @@ def server_round():
                 args=(offer_socket, join_port,))
             offer_sender.start()
             # Waiting for clients to respond
-            start_time = time()
-            while time() - start_time < DURATION:
-                try:
-                    client_socket, client_address = join_socket.accept()
-                    team_name = recv_string(client_socket).rstrip()
-                    # Setting some auxilliary parameters
-                    team = choice(TEAMS)
-                    score = 0
-                    # Adding a new Player object to our list of registered players
-                    players.append(Player(
-                        client_socket,
-                        client_address,
-                        team_name,
-                        team,
-                        score))
-                except:
-                    break
+            players = receive_players(join_socket)
             offer_sender.terminate()
         if not players:
             return
