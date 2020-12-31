@@ -6,7 +6,8 @@ from multiprocessing import Process
 import getch
 
 
-TEAM_NAME = 'Silverhand'
+MULTI_CLIENT = False
+TEAM_NAME = input('Your team name: ') if MULTI_CLIENT else 'Silverhand'
 
 
 def try_receiving_server_message(sock):
