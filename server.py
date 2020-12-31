@@ -1,64 +1,23 @@
-from socket import socket, AF_INET, SOCK_DGRAM, SOCK_STREAM, SOL_SOCKET, SO_REUSEPORT, SO_BROADCAST
-from string_message import BUFFER_SIZE, send_string, recv_string
-from offer_message import pack_offer, OFFER_PORT, create_offer_socket
+from ANSI import annotate_variable, print_warning, annotate_name, annotate_underline, print_error
+from multiprocessing import Queue, Process
+from socket import socket, AF_INET, SOCK_STREAM
+from offer_message import create_offer_socket, pack_offer, OFFER_PORT
 from time import sleep, time
+from string_message import recv_string, send_string
 from random import choice
-from multiprocessing import Process, Queue
 from scapy.all import get_if_addr
 from recordtype import recordtype
-from ANSI import annotate_variable, annotate_name, annotate_underline, print_error, print_warning
-from time import time
 
 
-NETWORK = '172.1.255.255'
-HOST = get_if_addr('eth1')
-BACKLOG = 1
-DURATION = 10
-DELAY_BETWEEN_OFFERS = 1
 NUM_OF_TEAMS = 2
 TEAMS = [x + 1 for x in range(NUM_OF_TEAMS)]
-
+DURATION = 10
+NETWORK = '172.1.255.255'
+DELAY_BETWEEN_OFFERS = 1
+BACKLOG = 1
+HOST = get_if_addr('eth1')
 
 Player = recordtype('Player', 'socket address name team score')
-
-
-def manage_player(player, q):
-    "Receives messages from the given player's socket and adds them to the queue (while specifying the player's name)"
-    while True:
-        try:
-            msg = recv_string(player.socket)
-            if not msg:
-                print_error(
-                    f'Failed to receive message from client {annotate_name(player.name)}')
-                break
-            if len(msg) == 1:
-                q.put((player.name, msg))
-        except:
-            print_error(
-                f'Failed to receive message from client {annotate_name(player.name)}')
-            break
-
-
-def send_offers(offer_socket, port):
-    'Sends offer messages through the given socket every second'
-    while True:
-        # Sending offer to all clients in the network
-        try:
-            offer_socket.sendto(
-                pack_offer(port),
-                (NETWORK, OFFER_PORT))
-        except:
-            print_warning('Failed to send offer messages')
-            pass
-        sleep(DELAY_BETWEEN_OFFERS)
-
-
-def player_names_of_team(players, team):
-    'Returns the names of all players in the team joined by \\n.'
-    return '\n'.join([
-        annotate_name(player.name)
-        for player in players
-        if player.team == team])
 
 
 def try_sending_message(sock, message):
@@ -68,32 +27,6 @@ def try_sending_message(sock, message):
         return True
     except:
         return False
-
-
-def receive_players(join_socket):
-    'Receives player connection and adds details about them to a list'
-    players = []
-    start_time = time()
-    while time() - start_time < DURATION:
-        try:
-            # Accepting the player's connection
-            client_socket, client_address = join_socket.accept()
-            # Receiving the team name
-            team_name = recv_string(client_socket).rstrip()
-            # Selecting a team assignment at random
-            team = choice(TEAMS)
-            # Setting the score to 0
-            score = 0
-            # Adding a new Player object to our list of registered players
-            players.append(Player(
-                client_socket,
-                client_address,
-                team_name,
-                team,
-                score))
-        except:
-            break
-    return players
 
 
 def send_message_to_players(message, players, print_fn):
@@ -123,76 +56,12 @@ def send_message_to_players(message, players, print_fn):
     return players_left
 
 
-def send_start_message(players):
-    'Sends the start message to the clients'
-    members_string = '\n'.join([
-        '\n'.join([
-            f'Group {annotate_variable(team)}:',
-            f'{player_names_of_team(players, team)}'
-        ])
-        for team in TEAMS])
-    start_message = '\n'.join([
-        'Welcome to Keyboard Spamming Battle Royale.',
-        f'{members_string}',
-        'Start pressing keys on your keyboard as fast as you can!'])
-    players = send_message_to_players(
-        start_message,
-        players,
-        lambda name: print_warning(f'Could not send start message to {annotate_name(name)}'))
-
-
-def play_game(players, q):
-    """
-    Play the game, consisting of:
-    starting the process-per-client,
-    waiting for game to end in 10 seconds,
-    and ending the game by terminating the processes
-    """
-    # Starting game by starting processes which will deal with each clients key-mashing
-    q = Queue()
-    processes = [
-        Process(target=manage_player, args=(player, q,))
-        for player in players]
-    for p in processes:
-        p.start()
-    # Waiting for game to end in 10 seconds
-    sleep(DURATION)
-    # Ending the game
-    for p in processes:
-        p.terminate()
-
-
-def count_keys(players, q):
-    'Goes over the given queue and increments the count of appearances of both keys typed by all players and all keys typed by players'
-    key_histogram = {}
-    while not q.empty():
-        name, key = q.get()
-        if key in key_histogram:
-            key_histogram[key] += 1
-        else:
-            key_histogram[key] = 0
-        for player in players:
-            if player.name == name:
-                player.score += 1
-    return key_histogram
-
-
-def generate_leaderboard_string(players):
-    """
-    Generated a string representation of a
-    leaderboard - list of players and their scores ordered by score, for the given list of player
-    (after their scores have been calculated, of course)
-    """
-    ordered_players = sorted(
-        players,
-        key=lambda player: player.score,
-        reverse=True)
-    leaderboard = [
-        f'{annotate_name(player.name)}\t{annotate_variable(player.score)}'
-        for player in ordered_players]
-    leaderboard[0] = annotate_underline(leaderboard[0])
-    leaderboard_string = '\n'.join(leaderboard)
-    return leaderboard_string
+def player_names_of_team(players, team):
+    'Returns the names of all players in the team joined by \\n.'
+    return '\n'.join([
+        annotate_name(player.name)
+        for player in players
+        if player.team == team])
 
 
 def send_end_message(players, leaderboard_string, scores, winner, common_key):
@@ -216,17 +85,37 @@ def send_end_message(players, leaderboard_string, scores, winner, common_key):
         lambda name: print_warning(f'Could not send end message to {annotate_name(name)}'))
 
 
-def send_offers_and_receive_players(join_socket):
-    'Set up socket for sending offers and initiate phase 1 of server'
-    with create_offer_socket() as offer_socket:
-        join_port = join_socket.getsockname()[1]
-        offer_sender = Process(
-            target=send_offers,
-            args=(offer_socket, join_port,))
-        offer_sender.start()
-        players = receive_players(join_socket)
-        offer_sender.terminate()
-    return players
+def generate_leaderboard_string(players):
+    """
+    Generated a string representation of a
+    leaderboard - list of players and their scores ordered by score, for the given list of player
+    (after their scores have been calculated, of course)
+    """
+    ordered_players = sorted(
+        players,
+        key=lambda player: player.score,
+        reverse=True)
+    leaderboard = [
+        f'{annotate_name(player.name)}\t{annotate_variable(player.score)}'
+        for player in ordered_players]
+    leaderboard[0] = annotate_underline(leaderboard[0])
+    leaderboard_string = '\n'.join(leaderboard)
+    return leaderboard_string
+
+
+def count_keys(players, q):
+    'Goes over the given queue and increments the count of appearances of both keys typed by all players and all keys typed by players'
+    key_histogram = {}
+    while not q.empty():
+        name, key = q.get()
+        if key in key_histogram:
+            key_histogram[key] += 1
+        else:
+            key_histogram[key] = 0
+        for player in players:
+            if player.name == name:
+                player.score += 1
+    return key_histogram
 
 
 def post_game_analysis(players, q):
@@ -259,6 +148,113 @@ def post_game_analysis(players, q):
     print('​Game over')
 
 
+def manage_player(player, q):
+    "Receives messages from the given player's socket and adds them to the queue (while specifying the player's name)"
+    while True:
+        try:
+            msg = recv_string(player.socket)
+            if not msg:
+                print_error(
+                    f'Failed to receive message from client {annotate_name(player.name)}')
+                break
+            if len(msg) == 1:
+                q.put((player.name, msg))
+        except:
+            print_error(
+                f'Failed to receive message from client {annotate_name(player.name)}')
+            break
+
+
+def play_game(players, q):
+    """
+    Play the game, consisting of:
+    starting the process-per-client,
+    waiting for game to end in 10 seconds,
+    and ending the game by terminating the processes
+    """
+    # Starting game by starting processes which will deal with each clients key-mashing
+    processes = [
+        Process(target=manage_player, args=(player, q,))
+        for player in players]
+    for p in processes:
+        p.start()
+    # Waiting for game to end in 10 seconds
+    sleep(DURATION)
+    # Ending the game
+    for p in processes:
+        p.terminate()
+
+
+def send_start_message(players):
+    'Sends the start message to the clients'
+    members_string = '\n'.join([
+        '\n'.join([
+            f'Group {annotate_variable(team)}:',
+            f'{player_names_of_team(players, team)}'
+        ])
+        for team in TEAMS])
+    start_message = '\n'.join([
+        'Welcome to Keyboard Spamming Battle Royale.',
+        f'{members_string}',
+        'Start pressing keys on your keyboard as fast as you can!'])
+    players = send_message_to_players(
+        start_message,
+        players,
+        lambda name: print_warning(f'Could not send start message to {annotate_name(name)}'))
+
+
+def receive_players(join_socket):
+    'Receives player connection and adds details about them to a list'
+    players = []
+    start_time = time()
+    while time() - start_time < DURATION:
+        try:
+            # Accepting the player's connection
+            client_socket, client_address = join_socket.accept()
+            # Receiving the team name
+            team_name = recv_string(client_socket).rstrip()
+            # Selecting a team assignment at random
+            team = choice(TEAMS)
+            # Setting the score to 0
+            score = 0
+            # Adding a new Player object to our list of registered players
+            players.append(Player(
+                client_socket,
+                client_address,
+                team_name,
+                team,
+                score))
+        except:
+            break
+    return players
+
+
+def send_offers(offer_socket, port):
+    'Sends offer messages through the given socket every second'
+    while True:
+        # Sending offer to all clients in the network
+        try:
+            offer_socket.sendto(
+                pack_offer(port),
+                (NETWORK, OFFER_PORT))
+        except:
+            print_warning('Failed to send offer messages')
+        sleep(DELAY_BETWEEN_OFFERS)
+
+
+def send_offers_and_receive_players(join_socket):
+    'Set up socket for sending offers and initiate phase 1 of server'
+    with create_offer_socket() as offer_socket:
+        join_port = join_socket.getsockname()[1]
+        offer_sender = Process(
+            target=send_offers,
+            args=(offer_socket, join_port,))
+        offer_sender.start()
+        players = receive_players(join_socket)
+        offer_sender.terminate()
+    return players
+
+
 def accept_players():
     'Set up socket for accepting clients and initiate phase 1 of server'
     with socket(AF_INET, SOCK_STREAM) as join_socket:
@@ -271,7 +267,6 @@ def accept_players():
 
 def server_round():
     'Method representing one server round'
-    # Waiting for clients
     print('Sending out offer requests')
     players = accept_players()
     if not players:

@@ -1,12 +1,18 @@
-from socket import socket, AF_INET, SOCK_DGRAM, SOCK_STREAM, SOL_SOCKET, SO_REUSEPORT, SO_BROADCAST
+from ANSI import print_error, annotate_variable
+from socket import socket, AF_INET, SOCK_STREAM
+from offer_message import create_offer_socket, OFFER_PORT, unpack_offer
 from string_message import BUFFER_SIZE, send_string, recv_string
-from offer_message import unpack_offer, OFFER_PORT, create_offer_socket
 from multiprocessing import Process
-from ANSI import annotate_variable, print_error
 import getch
 
 
 TEAM_NAME = 'Silverhand'
+
+
+def receive_server_messages(sock):
+    'Receives messages from the server and prints them'
+    while try_receiving_server_message(sock):
+        pass
 
 
 def send_keys(sock):
@@ -19,6 +25,14 @@ def send_keys(sock):
             break
 
 
+def play_game(sock):
+    'Play the game, which is split into two parallel processes: send_keys and receive_server_messages'
+    key_sender = Process(target=send_keys, args=(sock,))
+    key_sender.start()
+    receive_server_messages(sock)
+    key_sender.terminate()
+
+
 def try_receiving_server_message(sock):
     'Tries receiving a message from the server and returns whether it succeeded'
     try:
@@ -29,22 +43,6 @@ def try_receiving_server_message(sock):
         return True
     except:
         return False
-
-
-def receive_server_messages(sock):
-    'Receives messages from the server and prints them'
-    while try_receiving_server_message(sock):
-        pass
-
-
-def receive_server_address():
-    'Receives an offer message from the server and returns its address'
-    with create_offer_socket() as offer_socket:
-        offer_socket.bind(('', OFFER_PORT))
-        message, server_address = offer_socket.recvfrom(BUFFER_SIZE)
-    server_port = unpack_offer(message)
-    server_ip, _ = server_address
-    return server_ip, server_port
 
 
 def connect_to_server(sock, server_ip, server_port):
@@ -65,17 +63,18 @@ def connect_to_server(sock, server_ip, server_port):
     return True
 
 
-def play_game(sock):
-    'Play the game, which is split into two parallel processes: send_keys and receive_server_messages'
-    key_sender = Process(target=send_keys, args=(sock,))
-    key_sender.start()
-    receive_server_messages(sock)
-    key_sender.terminate()
+def receive_server_address():
+    'Receives an offer message from the server and returns its address'
+    with create_offer_socket() as offer_socket:
+        offer_socket.bind(('', OFFER_PORT))
+        message, server_address = offer_socket.recvfrom(BUFFER_SIZE)
+    server_port = unpack_offer(message)
+    server_ip, _ = server_address
+    return server_ip, server_port
 
 
 def client_round():
     'Method representing one client round'
-    # Looking for server
     print('Listening for offer requests')
     server_ip, server_port = receive_server_address()
     if not server_port:
