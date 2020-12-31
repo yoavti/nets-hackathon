@@ -123,6 +123,99 @@ def send_message_to_players(message, players, print_fn):
     return players_left
 
 
+def send_start_message(players):
+    'Sends the start message to the clients'
+    members_string = '\n'.join([
+        '\n'.join([
+            f'Group {annotate_variable(team)}:',
+            f'{player_names_of_team(players, team)}'
+        ])
+        for team in TEAMS])
+    start_message = '\n'.join([
+        'Welcome to Keyboard Spamming Battle Royale.',
+        f'{members_string}',
+        'Start pressing keys on your keyboard as fast as you can!'])
+    players = send_message_to_players(
+        start_message,
+        players,
+        lambda name: print_warning(f'Could not send start message to {annotate_name(name)}'))
+
+
+def play_game(players, q):
+    """
+    Play the game, consisting of:
+    starting the process-per-client,
+    waiting for game to end in 10 seconds,
+    and ending the game by terminating the processes
+    """
+    # Starting game by starting processes which will deal with each clients key-mashing
+    q = Queue()
+    processes = [
+        Process(target=manage_player, args=(player, q,))
+        for player in players]
+    for p in processes:
+        p.start()
+    # Waiting for game to end in 10 seconds
+    sleep(DURATION)
+    # Ending the game
+    for p in processes:
+        p.terminate()
+
+
+def count_keys(players, q):
+    'Goes over the given queue and increments the count of appearances of both keys typed by all players and all keys typed by players'
+    key_histogram = {}
+    while not q.empty():
+        name, key = q.get()
+        if key in key_histogram:
+            key_histogram[key] += 1
+        else:
+            key_histogram[key] = 0
+        for player in players:
+            if player.name == name:
+                player.score += 1
+    return key_histogram
+
+
+def generate_leaderboard_string(players):
+    """
+    Generated a string representation of a
+    leaderboard - list of players and their scores ordered by score, for the given list of player
+    (after their scores have been calculated, of course)
+    """
+    ordered_players = sorted(
+        players,
+        key=lambda player: player.score,
+        reverse=True)
+    leaderboard = [
+        f'{annotate_name(player.name)}\t{annotate_variable(player.score)}'
+        for player in ordered_players]
+    leaderboard[0] = annotate_underline(leaderboard[0])
+    leaderboard_string = '\n'.join(leaderboard)
+    return leaderboard_string
+
+
+def send_end_message(players, leaderboard_string, scores, winner, common_key):
+    'Sends the start message to the clients'
+    scores_string = ' '.join([
+        f'Group {annotate_variable(index + 1)} typed in {annotate_variable(score)} characters.'
+        for index, score in enumerate(scores)])
+    end_message = '\n'.join([
+        'Game over!',
+        f'{scores_string}',
+        f'Group {annotate_variable(winner)} wins!',
+        'Congratulations to the winners:',
+        f'{player_names_of_team(players, winner)}',
+        'Leaderboard for this round:',
+        f'{leaderboard_string}',
+        f"The most commonly typed character was '{annotate_name(common_key)}'"
+    ])
+    players = send_message_to_players(
+        end_message,
+        players,
+        lambda name: print_warning(f'Could not send end message to {annotate_name(name)}'))
+
+
 def server_round():
     'Method representing one server round'
     # Waiting for clients
@@ -144,88 +237,32 @@ def server_round():
             offer_sender.terminate()
         if not players:
             return
-        # Game mode
-        # Sending start message to all registered clients
-        members_string = '\n'.join([
-            '\n'.join([
-                f'Group {annotate_variable(team)}:',
-                f'{player_names_of_team(players, team)}'
-            ])
-            for team in TEAMS])
-        start_message = '\n'.join([
-            'Welcome to Keyboard Spamming Battle Royale.',
-            f'{members_string}',
-            'Start pressing keys on your keyboard as fast as you can!'
-        ])
-        players = send_message_to_players(
-            start_message,
-            players,
-            lambda name: print_warning(f'Could not send start message to {annotate_name(name)}'))
-        # Starting game by starting processes which will deal with each clients key-mashing
         q = Queue()
-        processes = [
-            Process(target=manage_player, args=(player, q,))
-            for player in players]
-        for p in processes:
-            p.start()
-        # Waiting for game to end in 10 seconds
-        sleep(DURATION)
-        # Ending the game
-        for p in processes:
-            p.terminate()
+        send_start_message(players)
+        play_game(players, q)
         # Post-game analysis
-        # Going over queue given to the keystroke-detecting processes which contains the pairs of player name and the key they typed in
-        key_histogram = {}
-        while not q.empty():
-            name, key = q.get()
-            if key in key_histogram:
-                key_histogram[key] += 1
-            else:
-                key_histogram[key] = 0
-            for player in players:
-                if player.name == name:
-                    player.score += 1
+        # Cound the appearances of keys typed by all players and all keys typed by each player
+        key_histogram = count_keys(players, q)
         # Creating leaderboard - ordered list of players by score
-        ordered_players = sorted(
-            players,
-            key=lambda player: player.score,
-            reverse=True)
-        leaderboard = [
-            f'{annotate_name(player.name)}\t{annotate_variable(player.score)}'
-            for player in ordered_players]
-        leaderboard[0] = annotate_underline(leaderboard[0])
-        leaderboard_string = '\n'.join(leaderboard)
-        # Finding the most typed key
+        leaderboard_string = generate_leaderboard_string(players)
         if key_histogram:
+            # Most typed key
             common_key = max(key_histogram, key=key_histogram.get)
         else:
             common_key = 'no keys entered'
-        # Calculating scores for each team
-        scores = [
+        scores = [  # Score for each team
             sum([
                 player.score
                 for player in players
                 if player.team == team])
             for team in TEAMS]
         winner = 1 + scores.index(max(scores))  # Winning team
-        # Sending end message to all registered clients
-        scores_string = ' '.join([
-            f'Group {annotate_variable(index + 1)} typed in {annotate_variable(score)} characters.'
-            for index, score in enumerate(scores)])
-        end_message = '\n'.join([
-            'Game over!',
-            f'{scores_string}',
-            f'Group {annotate_variable(winner)} wins!',
-            'Congratulations to the winners:',
-            f'{player_names_of_team(players, winner)}',
-            'Leaderboard for this round:',
-            f'{leaderboard_string}',
-            f"The most commonly typed character was '{annotate_name(common_key)}'"
-        ])
-        players = send_message_to_players(
-            end_message,
+        send_end_message(
             players,
-            lambda name: print_warning(f'Could not send end message to {annotate_name(name)}'))
+            leaderboard_string,
+            scores,
+            winner,
+            common_key)
         # Closing the TCP connections
         for player in players:
             player.socket.close()
