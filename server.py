@@ -96,7 +96,35 @@ def receive_players(join_socket):
     return players
 
 
+def send_message_to_players(message, players, print_fn):
+    """
+    Input:
+
+    message: string message to send to the players
+
+    players: list of players
+
+    print_fn: function that receives a player name and prints a debug message
+
+    Prints the given message,
+    filters the list of players by whether or not the server was able to send the message,
+    goes over all players, and if they were filtered, close their connection and print a debug message with their name,
+    finally returns the list of players left after the filter.
+    """
+    print(message)
+    players_left = [
+        player
+        for player in players
+        if try_sending_message(player.socket, message)]
+    for player in players:
+        if player not in players_left:
+            player.socket.close()
+            print_fn(player.name)
+    return players_left
+
+
 def server_round():
+    'Method representing one server round'
     # Waiting for clients
     print('Sending out offer requests')
     # Setting up TCP socket used for receiving keystrokes
@@ -112,7 +140,6 @@ def server_round():
                 target=send_offers,
                 args=(offer_socket, join_port,))
             offer_sender.start()
-            # Waiting for clients to respond
             players = receive_players(join_socket)
             offer_sender.terminate()
         if not players:
@@ -130,11 +157,10 @@ def server_round():
             f'{members_string}',
             'Start pressing keys on your keyboard as fast as you can!'
         ])
-        print(start_message)
-        players = [
-            player
-            for player in players
-            if try_sending_message(player.socket, start_message)]
+        players = send_message_to_players(
+            start_message,
+            players,
+            lambda name: print_warning(f'Could not send start message to {annotate_name(name)}'))
         # Starting game by starting processes which will deal with each clients key-mashing
         q = Queue()
         processes = [
@@ -196,14 +222,10 @@ def server_round():
             f'{leaderboard_string}',
             f"The most commonly typed character was '{annotate_name(common_key)}'"
         ])
-        print(end_message)
-        for player in players:
-            try:
-                send_string(player.socket, end_message)
-            except:
-                print_warning(
-                    f'Could not send end message to {annotate_name(player.name)}')
-                pass
+        players = send_message_to_players(
+            end_message,
+            players,
+            lambda name: print_warning(f'Could not send end message to {annotate_name(name)}'))
         # Closing the TCP connections
         for player in players:
             player.socket.close()
@@ -211,138 +233,10 @@ def server_round():
 
 
 def main():
-    print(
-        f'Server started, listening on IP address {annotate_variable(HOST)}')
+    'Main method for the server'
+    print(f'Server started, listening on IP address {annotate_variable(HOST)}')
     while True:
-        players = []
-        # Waiting for clients
-        print('Sending out offer requests')
-        # Setting up TCP socket used for receiving keystrokes
-        with socket(AF_INET, SOCK_STREAM) as join_socket:
-            join_socket.bind(('', 0))
-            join_socket.listen(BACKLOG)
-            join_socket.settimeout(DURATION)
-            # Setting up UDP socket used for sending out offer messages
-            with socket(AF_INET, SOCK_DGRAM) as offer_socket:
-                offer_socket.setsockopt(SOL_SOCKET, SO_REUSEPORT, 1)
-                offer_socket.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
-                join_port = join_socket.getsockname()[1]
-                offer_sender = Process(
-                    target=send_offers,
-                    args=(offer_socket, join_port,))
-                offer_sender.start()
-                # Waiting for clients to respond
-                start_time = time()
-                while time() - start_time < DURATION:
-                    try:
-                        client_socket, client_address = join_socket.accept()
-                        team_name = recv_string(client_socket).rstrip()
-                        # Setting some auxilliary parameters
-                        team = choice(TEAMS)
-                        score = 0
-                        # Adding a new Player object to our list of registered players
-                        players.append(Player(
-                            client_socket,
-                            client_address,
-                            team_name,
-                            team,
-                            score))
-                    except:
-                        break
-            offer_sender.terminate()
-        if not players:
-            continue
-        # Game mode
-        # Sending start message to all registered clients
-        members_string = '\n'.join([
-            '\n'.join([
-                f'Group {annotate_variable(team)}:',
-                f'{player_names_of_team(players, team)}'
-            ])
-            for team in TEAMS])
-        start_message = '\n'.join([
-            'Welcome to Keyboard Spamming Battle Royale.',
-            f'{members_string}',
-            'Start pressing keys on your keyboard as fast as you can!'
-        ])
-        print(start_message)
-        players = [
-            player
-            for player in players
-            if try_sending_message(player.socket, start_message)]
-        # Starting game by starting processes which will deal with each clients key-mashing
-        q = Queue()
-        processes = [
-            Process(target=manage_player, args=(player, q,))
-            for player in players]
-        for p in processes:
-            p.start()
-        # Waiting for game to end in 10 seconds
-        sleep(DURATION)
-        # Ending the game
-        for p in processes:
-            p.terminate()
-        # Post-game analysis
-        # Going over queue given to the keystroke-detecting processes which contains the pairs of player name and the key they typed in
-        key_histogram = {}
-        while not q.empty():
-            name, key = q.get()
-            if key in key_histogram:
-                key_histogram[key] += 1
-            else:
-                key_histogram[key] = 0
-            for player in players:
-                if player.name == name:
-                    player.score += 1
-        # Creating leaderboard - ordered list of players by score
-        ordered_players = sorted(
-            players,
-            key=lambda player: player.score,
-            reverse=True)
-        leaderboard = [
-            f'{annotate_name(player.name)}\t{annotate_variable(player.score)}'
-            for player in ordered_players]
-        leaderboard[0] = annotate_underline(leaderboard[0])
-        leaderboard_string = '\n'.join(leaderboard)
-        # Finding the most typed key
-        if key_histogram:
-            common_key = max(key_histogram, key=key_histogram.get)
-        else:
-            common_key = 'no keys entered'
-        # Calculating scores for each team
-        scores = [
-            sum([
-                player.score
-                for player in players
-                if player.team == team])
-            for team in TEAMS]
-        winner = 1 + scores.index(max(scores))  # Winning team
-        # Sending end message to all registered clients
-        scores_string = ' '.join([
-            f'Group {annotate_variable(index + 1)} typed in {annotate_variable(score)} characters.'
-            for index, score in enumerate(scores)])
-        end_message = '\n'.join([
-            'Game over!',
-            f'{scores_string}',
-            f'Group {annotate_variable(winner)} wins!',
-            'Congratulations to the winners:',
-            f'{player_names_of_team(players, winner)}',
-            'Leaderboard for this round:',
-            f'{leaderboard_string}',
-            f"The most commonly typed character was '{annotate_name(common_key)}'"
-        ])
-        print(end_message)
-        for player in players:
-            try:
-                send_string(player.socket, end_message)
-            except:
-                print_warning(
-                    f'Could not send end message to {annotate_name(player.name)}')
-                pass
-        # Closing the TCP connections
-        for player in players:
-            player.socket.close()
-        print('​Game over')
+        server_round()
 
 
 if __name__ == "__main__":
