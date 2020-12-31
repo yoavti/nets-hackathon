@@ -1,6 +1,6 @@
 from socket import socket, AF_INET, SOCK_DGRAM, SOCK_STREAM, SOL_SOCKET, SO_REUSEPORT, SO_BROADCAST
 from string_message import BUFFER_SIZE, send_string, recv_string
-from offer_message import unpack_offer, OFFER_PORT
+from offer_message import unpack_offer, OFFER_PORT, create_offer_socket
 from multiprocessing import Process
 from ANSI import annotate_variable, print_error
 import getch
@@ -23,9 +23,8 @@ def client_round():
     # Looking for server
     print('Listening for offer requests')
     # Setting up UDP socket used for receiving offer messages
-    with socket(AF_INET, SOCK_DGRAM) as offer_socket:
-        offer_socket.setsockopt(SOL_SOCKET, SO_REUSEPORT, 1)
-        offer_socket.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
+    offer_socket = create_offer_socket()
+    with offer_socket:
         offer_socket.bind(('', OFFER_PORT))
         # Waiting for offers
         message, server_address = offer_socket.recvfrom(BUFFER_SIZE)
