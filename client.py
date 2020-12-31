@@ -39,8 +39,7 @@ def receive_server_messages(sock):
 
 def receive_server_address():
     'Receives an offer message from the server and returns its address'
-    offer_socket = create_offer_socket()
-    with offer_socket:
+    with create_offer_socket() as offer_socket:
         offer_socket.bind(('', OFFER_PORT))
         message, server_address = offer_socket.recvfrom(BUFFER_SIZE)
     server_port = unpack_offer(message)

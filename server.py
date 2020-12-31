@@ -216,57 +216,70 @@ def send_end_message(players, leaderboard_string, scores, winner, common_key):
         lambda name: print_warning(f'Could not send end message to {annotate_name(name)}'))
 
 
-def server_round():
-    'Method representing one server round'
-    # Waiting for clients
-    print('Sending out offer requests')
-    # Setting up TCP socket used for receiving keystrokes
+def send_offers_and_receive_players(join_socket):
+    'Set up socket for sending offers and initiate phase 1 of server'
+    with create_offer_socket() as offer_socket:
+        join_port = join_socket.getsockname()[1]
+        offer_sender = Process(
+            target=send_offers,
+            args=(offer_socket, join_port,))
+        offer_sender.start()
+        players = receive_players(join_socket)
+        offer_sender.terminate()
+    return players
+
+
+def post_game_analysis(players, q):
+    'Calculate statistics for the given players and queue and finish game'
+    # Count the appearances of keys typed by all players and all keys typed by each player
+    key_histogram = count_keys(players, q)
+    # Creating leaderboard - ordered list of players by score
+    leaderboard_string = generate_leaderboard_string(players)
+    if key_histogram:
+        # Most typed key
+        common_key = max(key_histogram, key=key_histogram.get)
+    else:
+        common_key = 'no keys entered'
+    scores = [  # Score for each team
+        sum([
+            player.score
+            for player in players
+            if player.team == team])
+        for team in TEAMS]
+    winner = 1 + scores.index(max(scores))  # Winning team
+    send_end_message(
+        players,
+        leaderboard_string,
+        scores,
+        winner,
+        common_key)
+    # Closing the TCP connections
+    for player in players:
+        player.socket.close()
+    print('​Game over')
+
+
+def accept_players():
+    'Set up socket for accepting clients and initiate phase 1 of server'
     with socket(AF_INET, SOCK_STREAM) as join_socket:
         join_socket.bind(('', 0))
         join_socket.listen(BACKLOG)
         join_socket.settimeout(DURATION)
-        # Setting up UDP socket used for sending out offer messages
-        offer_socket = create_offer_socket()
-        with offer_socket:
-            join_port = join_socket.getsockname()[1]
-            offer_sender = Process(
-                target=send_offers,
-                args=(offer_socket, join_port,))
-            offer_sender.start()
-            players = receive_players(join_socket)
-            offer_sender.terminate()
-        if not players:
-            return
-        q = Queue()
-        send_start_message(players)
-        play_game(players, q)
-        # Post-game analysis
-        # Cound the appearances of keys typed by all players and all keys typed by each player
-        key_histogram = count_keys(players, q)
-        # Creating leaderboard - ordered list of players by score
-        leaderboard_string = generate_leaderboard_string(players)
-        if key_histogram:
-            # Most typed key
-            common_key = max(key_histogram, key=key_histogram.get)
-        else:
-            common_key = 'no keys entered'
-        scores = [  # Score for each team
-            sum([
-                player.score
-                for player in players
-                if player.team == team])
-            for team in TEAMS]
-        winner = 1 + scores.index(max(scores))  # Winning team
-        send_end_message(
-            players,
-            leaderboard_string,
-            scores,
-            winner,
-            common_key)
-        # Closing the TCP connections
-        for player in players:
-            player.socket.close()
-        print('​Game over')
+        players = send_offers_and_receive_players(join_socket)
+    return players
+
+
+def server_round():
+    'Method representing one server round'
+    # Waiting for clients
+    print('Sending out offer requests')
+    players = accept_players()
+    if not players:
+        return
+    q = Queue()
+    send_start_message(players)
+    play_game(players, q)
+    post_game_analysis(players, q)
 
 
 def main():
