@@ -48,10 +48,36 @@ def receive_server_address():
     return server_ip, server_port
 
 
+def connect_to_server(sock, server_ip, server_port):
+    'Connect to the server over TCP through the given socket and sent team name through it'
+    # Connecting over TCP
+    try:
+        sock.connect((server_ip, server_port))
+    except:
+        print_error('Failed to connect to server')
+        return False
+    # Sending team name (with \n at the end)
+    try:
+        send_string(sock, TEAM_NAME + '\n')
+    except:
+        print_error('Failed to send team name')
+        return False
+    print("Connected and waiting for game to start")
+    return True
+
+
+def play_game(sock):
+    'Play the game, which is split into two parallel processes: send_keys and receive_server_messages'
+    key_sender = Process(target=send_keys, args=(sock,))
+    key_sender.start()
+    receive_server_messages(sock)
+    key_sender.terminate()
+
+
 def client_round():
+    'Method representing one client round'
     # Looking for server
     print('Listening for offer requests')
-    # Setting up UDP socket used for receiving offer messages
     server_ip, server_port = receive_server_address()
     if not server_port:
         print_error('Incorrect offer message format received')
@@ -60,32 +86,18 @@ def client_round():
         f'Received offer from {annotate_variable(server_ip)}, attempting to connect...')
     # Setting up TCP socket used for sending keystrokes
     with socket(AF_INET, SOCK_STREAM) as game_socket:
-        # Connecting to server
-        try:
-            game_socket.connect((server_ip, server_port))
-        except:
-            print_error('Failed to connect to server')
+        if not connect_to_server(game_socket, server_ip, server_port):
             return
-        # Sending team name (with \n at the end)
-        try:
-            send_string(game_socket, TEAM_NAME + '\n')
-        except:
-            print_error('Failed to send team name')
-            return
-        print("Connected and waiting for game to start")
-        # Game mode
+        # Receive start message
         if not try_receiving_server_message(game_socket):
             print_error('Could not receive start message for the game')
             return
-        key_sender = Process(target=send_keys, args=(game_socket,))
-        key_sender.start()
-        # Trying to receive string messages from server
-        receive_server_messages(game_socket)
-        key_sender.terminate()
-        print('Server disconnected')
+        play_game(game_socket)
+    print('Server disconnected')
 
 
 def main():
+    'Main method for the client'
     print('Client started')
     while True:
         client_round()
