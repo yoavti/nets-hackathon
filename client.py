@@ -1,13 +1,12 @@
 from socket import socket, AF_INET, SOCK_DGRAM, SOCK_STREAM, SOL_SOCKET, SO_REUSEPORT, SO_BROADCAST
 from string_message import BUFFER_SIZE, send_string, recv_string
-from offer_message import unpack_offer
+from offer_message import unpack_offer, OFFER_PORT
 from multiprocessing import Process
 from ANSI import annotate_variable, print_error
 import getch
 
 
 TEAM_NAME = 'Silverhand'
-OFFER_PORT = 13117
 
 
 def send_keys(sock):

@@ -1,6 +1,6 @@
 from socket import socket, AF_INET, SOCK_DGRAM, SOCK_STREAM, SOL_SOCKET, SO_REUSEPORT, SO_BROADCAST
 from string_message import BUFFER_SIZE, send_string, recv_string
-from offer_message import pack_offer
+from offer_message import pack_offer, OFFER_PORT
 from time import sleep, time
 from random import choice
 from multiprocessing import Process, Queue
@@ -12,7 +12,6 @@ from time import time
 
 NETWORK = '172.1.255.255'
 HOST = get_if_addr('eth1')
-OFFER_PORT = 13117
 BACKLOG = 1
 DURATION = 10
 DELAY_BETWEEN_OFFERS = 1

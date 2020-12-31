@@ -1,6 +1,7 @@
 from struct import pack, unpack
 
 
+OFFER_PORT = 13117
 FORMAT = '!IBH'
 COOKIE = 0xfeedbeef
 TYPE = 0x2
