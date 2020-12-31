@@ -222,7 +222,10 @@ def receive_players(join_socket):
             # Accepting the player's connection
             client_socket, client_address = join_socket.accept()
             # Receiving the team name
-            team_name = recv_string(client_socket).rstrip()
+            team_name = recv_string(client_socket)
+            if not team_name.endswith('\n'):
+                continue
+            team_name = team_name.rstrip()
             # Selecting a team assignment at random
             team = choice(TEAMS)
             # Setting the score to 0
